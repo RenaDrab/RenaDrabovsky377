@@ -10,4 +10,4 @@ Mindful bites is a website that will help America on a healthy food journey. It 
 Mindful Bites is designed as a web application that works on most modern browsers and devices. It should work on desktop browsers such as Google Chrome, Mozilla Firefox, Microsoft Edge, and Safari. It should work on mobile browsers such as iOS Safari (iPhone/iPad) and Android Chrome. It should also work on tablet devices such as iPadOS Safari and Android tablet browsers. The website is built using standard web technologies like HTML, CSS, and JavaScript so it is compatible with any browser that supports modern JavaScript and API requests. 
 
 # Link to Developer Manual
-[Docs/Develolper_Manual.md](Docs/Develolper_Manual.md)
+[docs/Dev_Manual.md](docs/Dev_Manual.md)
