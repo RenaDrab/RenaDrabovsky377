@@ -235,4 +235,3 @@ function loadSlides() {
 
 if (document.getElementById("slides")) loadSlides();
 if (document.getElementById("infoQuestions")) loadQuestions();
-if (document.getElementById("calorieChart")) loadChart();
