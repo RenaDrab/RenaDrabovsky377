@@ -1,153 +1,143 @@
 const BASE_URL = "/api";
 
-// Navigation 
-function goPage(page){
+/* ---------------- NAVIGATION ---------------- */
+function goPage(page) {
     window.location.href = page;
 }
 
-// Checks for valid zipcode
+/* ---------------- ZIPCODE INPUT VALIDATION ---------------- */
 const zip = document.getElementById("zipcode");
-if(zip){
-zip.addEventListener("input", () => {
-    zip.value = zip.value.replace(/\D/g,'').slice(0,5);
-});
+
+if (zip) {
+    zip.addEventListener("input", () => {
+        zip.value = zip.value.replace(/\D/g, "").slice(0, 5);
+    });
 }
 
-// Kroger to Supabase 
-// using zipcode, item and category to search through api and save in supabase
+/* =========================================================
+   1. FETCH #1 → Kroger + Supabase (MAIN SEARCH FUNCTION)
+   ========================================================= */
+
 const searchBtn = document.getElementById("searchBtn");
 
-if(searchBtn){
-searchBtn.onclick = async () => {
+if (searchBtn) {
+    searchBtn.onclick = async () => {
+        const zip = document.getElementById("zipcode").value;
+        const item = document.getElementById("zitem").value;
+        const category = document.getElementById("categoryFilter").value;
 
-    const zip = document.getElementById("zipcode").value;
-    const item = document.getElementById("zitem").value;
-    const category = document.getElementById("categoryFilter").value;
+        if (!zip || !item) {
+            document.getElementById("storeResults").innerHTML =
+                "Please enter both zipcode and item.";
+            return;
+        }
 
-    console.log("ZIP:", zip);
-    console.log("ITEM:", item);
-    console.log("CATEGORY:", category);
+        const res = await fetch(
+            `${BASE_URL}/fetch-and-save?zipcode=${zip}&item=${encodeURIComponent(item)}&category=${encodeURIComponent(category)}`
+        );
 
-    if (!zip || !item) {
+        const data = await res.json();
+        let products = data.products || [];
+
+        // FILTERS
+        if (category === "Organic") {
+            products = products.filter(p =>
+                p.category?.toLowerCase().includes("organic")
+            );
+        }
+
+        if (category === "nutritious") {
+            products = [...products].sort(
+                (a, b) => (b.nutritional_rating || 0) - (a.nutritional_rating || 0)
+            );
+        }
+
         document.getElementById("storeResults").innerHTML =
-            "Please enter both zipcode and item.";
-        return;
-    }
-
-    const res = await fetch(
-    `/api/fetch-and-save?zipcode=${zip}&item=${encodeURIComponent(item)}&category=${encodeURIComponent(category)}`
-);
-
-    const data = await res.json();
-
-    const products = data.products || [];
-
-    let filtered = products;
-
-    // Allow filters like organic or nutritional
-    if(category === "Organic"){
-        filtered = products.filter(p =>
-            p.category?.toLowerCase().includes("organic")
-        );
-    }
-
-    if(category === "nutritious"){
-        filtered = [...products].sort((a,b) =>
-            (b.nutritional_rating || 0) - (a.nutritional_rating || 0)
-        );
-    }
-
-    // Show results for zipcode/item search
-    document.getElementById("storeResults").innerHTML =
-        filtered.map(p => `
-            <div>
-                <h3>${p.item_name}</h3>
-                <p><b>Brand:</b> ${p.brand}</p>
-                <p><b>Category:</b> ${p.category}</p>
-                <p><b>Calories:</b> ${p.calories ?? "N/A"}</p>
-                <p><b>Nutrition Score:</b> ${p.nutritional_rating ?? "N/A"}</p>
-            </div>
-        `).join("");
-};
+            products.map(p => `
+                <div>
+                    <h3>${p.item_name}</h3>
+                    <p><b>Brand:</b> ${p.brand}</p>
+                    <p><b>Category:</b> ${p.category}</p>
+                    <p><b>Calories:</b> ${p.calories ?? "N/A"}</p>
+                    <p><b>Nutrition Score:</b> ${p.nutritional_rating ?? "N/A"}</p>
+                </div>
+            `).join("");
+    };
 }
 
+/* =========================================================
+   2. FETCH #2 → Ratings (Supabase products)
+   ========================================================= */
 
-
-// Grabbing ratings from supsbase
 const rateBtn = document.getElementById("rateBtn");
 
 if (rateBtn) {
-rateBtn.onclick = async () => {
+    rateBtn.onclick = async () => {
+        const item = document.getElementById("item").value.toLowerCase();
 
-    const item = document.getElementById("item").value.toLowerCase();
+        const res = await fetch(`${BASE_URL}/products`);
+        const data = await res.json();
 
-    const res = await fetch("/api/products");
-    const data = await res.json();
+        const safeData = Array.isArray(data) ? data : [];
 
-    const safeData = Array.isArray(data) ? data : [];
+        const filtered = safeData.filter(r =>
+            r.item_name?.toLowerCase().includes(item)
+        );
 
-    // FILTER by what user typed
-    const filtered = safeData.filter(r =>
-        r.item_name?.toLowerCase().includes(item)
-    );
-
-    document.getElementById("ratingResults").innerHTML =
-        filtered.map(r => `
-            <div>
-                <h3>${r.item_name || "Unknown Item"}</h3>
-                <p><b>Brand:</b> ${r.brand || "Unknown"}</p>
-                <p><b>Rating:</b> ⭐ ${r.rating ?? "No rating"}</p>
-            </div>
-        `).join("");
-};
+        document.getElementById("ratingResults").innerHTML =
+            filtered.map(r => `
+                <div>
+                    <h3>${r.item_name || "Unknown Item"}</h3>
+                    <p><b>Brand:</b> ${r.brand || "Unknown"}</p>
+                    <p><b>Rating:</b> ⭐ ${r.rating ?? "No rating"}</p>
+                </div>
+            `).join("");
+    };
 }
 
-// Grabbing nutrition info from supabase
+/* =========================================================
+   3. FETCH #3 → Nutrition (Supabase products)
+   ========================================================= */
+
 const nutritionBtn = document.getElementById("nutritionBtn");
 
-if(nutritionBtn){
-nutritionBtn.onclick = async () => {
+if (nutritionBtn) {
+    nutritionBtn.onclick = async () => {
+        const item = document.getElementById("nitem").value.toLowerCase();
 
-    const item = document.getElementById("nitem").value.toLowerCase();
+        const res = await fetch(`${BASE_URL}/products`);
+        const data = await res.json();
 
-    const res = await fetch("/api/products");
-    const data = await res.json();
+        const safeData = Array.isArray(data) ? data : [];
 
-    const safeData = Array.isArray(data) ? data : [];
+        const filtered = safeData.filter(p =>
+            p.item_name?.toLowerCase().includes(item)
+        );
 
-    // filter by item name
-    const filtered = safeData.filter(p =>
-        p.item_name?.toLowerCase().includes(item)
-    );
-
-    document.getElementById("nutritionResults").innerHTML =
-        filtered.map(p => `
-        <div>
-            <h3>${p.item_name}</h3>
-            <p>Calories: ${p.calories ?? "N/A"}</p>
-            <p>Sugar: ${p.sugar ?? "N/A"}g</p>
-            <p>Saturated Fat: ${p.saturated_fat ?? "N/A"}g</p>
-        </div>
-    `).join("");
-};
+        document.getElementById("nutritionResults").innerHTML =
+            filtered.map(p => `
+                <div>
+                    <h3>${p.item_name}</h3>
+                    <p>Calories: ${p.calories ?? "N/A"}</p>
+                    <p>Sugar: ${p.sugar ?? "N/A"}g</p>
+                    <p>Saturated Fat: ${p.saturated_fat ?? "N/A"}g</p>
+                </div>
+            `).join("");
+    };
 }
 
+/* =========================================================
+   CHART (Chart.js Library #1)
+   ========================================================= */
 
-
-
-// Chart for about page
 async function loadChart() {
-
-    const res = await fetch("/api/products");
+    const res = await fetch(`${BASE_URL}/products`);
     const data = await res.json();
 
     const safeData = Array.isArray(data) ? data : [];
 
-    // grabbing bread calorie info from supabase
     const bread = safeData
-        .filter(p =>
-            p.item_name?.toLowerCase().includes("bread")
-        )
+        .filter(p => p.item_name?.toLowerCase().includes("bread"))
         .filter(p => (p.calories || 0) <= 200);
 
     const labels = bread.map(b => b.item_name);
@@ -156,7 +146,7 @@ async function loadChart() {
     new Chart(document.getElementById("calorieChart"), {
         type: "bar",
         data: {
-            labels: labels,
+            labels,
             datasets: [{
                 label: "Calories in Bread",
                 data: calories
@@ -165,30 +155,27 @@ async function loadChart() {
     });
 }
 
-// Grabbing questions from supabase
-async function loadQuestions() {
+/* =========================================================
+   QUESTIONS (FETCH #4 technically optional extra)
+   ========================================================= */
 
+async function loadQuestions() {
     const box = document.getElementById("infoQuestions");
     if (!box) return;
 
-    const res = await fetch("/api/question");
+    const res = await fetch(`${BASE_URL}/question`);
     const data = await res.json();
 
     if (!Array.isArray(data)) return;
 
     data.forEach(q => {
-        let btn = document.createElement("button");
+        const btn = document.createElement("button");
         btn.innerText = q.question;
         btn.className = "btn question-btn";
 
         btn.onclick = () => {
-
             const answerBox = document.getElementById("questionAnswer");
-
-            // show box if hidden
             answerBox.style.display = "block";
-
-            // load answer text
             answerBox.innerText = q.answer;
         };
 
@@ -196,63 +183,29 @@ async function loadQuestions() {
     });
 }
 
+/* =========================================================
+   IMAGE SLIDER (Library #2 - Swiper)
+   ========================================================= */
 
 function loadSlides() {
 
-    const images1 = [
-        "fixed.png",
-        "org.png.png",
-        "nut.png.png",
-        "noneent.png"
-    ];
-
-    const images2 = [
-        "rating1.png.png",
-        "rating2.png.png",
-    ];
-
-    const images3 = [
-        "last111.png.png",
-        "last1.png.png",
-    ];
-
-    const images4 = [
-        "about.png",
-        "about1.png",
-        "about2.png",
-        "about3.png",
-        "about4.png",
-    ];
+    const images1 = ["images/fixed.png", "images/org.png.png", "images/nut.png.png", "images/noneent.png"];
+    const images2 = ["images/rating1.png.png", "images/rating2.png.png"];
+    const images3 = ["images/last111.png.png", "images/last1.png.png"];
+    const images4 = ["images/about.png", "images/about1.png", "images/about2.png", "images/about3.png", "images/about4.png"];
 
     document.getElementById("slides").innerHTML =
-        images1.map(img => `
-            <div class="swiper-slide">
-                <img src="${img}" style="width:100%">
-            </div>
-        `).join("");
+        images1.map(img => `<div class="swiper-slide"><img src="${img}" style="width:100%"></div>`).join("");
 
     document.getElementById("slides1").innerHTML =
-        images2.map(img => `
-            <div class="swiper-slide">
-                <img src="${img}" style="width:100%">
-            </div>
-        `).join("");
+        images2.map(img => `<div class="swiper-slide"><img src="${img}" style="width:100%"></div>`).join("");
 
     document.getElementById("slides2").innerHTML =
-        images3.map(img => `
-            <div class="swiper-slide">
-                <img src="${img}" style="width:100%">
-            </div>
-        `).join("");
+        images3.map(img => `<div class="swiper-slide"><img src="${img}" style="width:100%"></div>`).join("");
 
     document.getElementById("slides3").innerHTML =
-        images4.map(img => `
-            <div class="swiper-slide">
-                <img src="${img}" style="width:100%">
-            </div>
-        `).join("");
+        images4.map(img => `<div class="swiper-slide"><img src="${img}" style="width:100%"></div>`).join("");
 
-    
     new Swiper(".swiper", {
         loop: true,
         pagination: {
@@ -266,9 +219,10 @@ function loadSlides() {
     });
 }
 
-if (document.getElementById("slides")) {
-    loadSlides();
-}
-if (document.getElementById("infoQuestions")) {
-    loadQuestions();
-}
+/* =========================================================
+   AUTO INIT
+   ========================================================= */
+
+if (document.getElementById("slides")) loadSlides();
+if (document.getElementById("infoQuestions")) loadQuestions();
+if (document.getElementById("calorieChart")) loadChart();
