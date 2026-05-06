@@ -1,4 +1,5 @@
 const BASE_URL = "/api";
+let calorieChart = null;
 
 /* ---------------- NAVIGATION ---------------- */
 function goPage(page) {
@@ -143,7 +144,16 @@ async function loadChart() {
     const labels = bread.map(b => b.item_name);
     const calories = bread.map(b => b.calories || 0);
 
-    new Chart(document.getElementById("calorieChart"), {
+    const ctx = document.getElementById("calorieChart");
+
+    if (!ctx) return;
+
+    // 🔥 destroy old chart
+    if (calorieChart) {
+        calorieChart.destroy();
+    }
+
+    calorieChart = new Chart(ctx, {
         type: "bar",
         data: {
             labels,
